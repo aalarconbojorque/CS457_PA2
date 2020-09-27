@@ -1,21 +1,13 @@
 # -----------------------------------------------------------------------------
 # FILE NAME:         aalarconbojorquez_pa.py
-# USAGE:             python3 aalarconbojorquez_pa.py < PA1_test.sql
-# NOTES:             Runs using the standards file input {filename} < PA1_test.sql
+# USAGE:             python3 aalarconbojorquez_pa.py < PA2_test.sql
+# NOTES:             Runs using the standards file input {filename} < PA2_test.sql
 #                    or line by line input python3 aalarconbojorquez_pa.py
 #
 # MODIFICATION HISTORY:
 # Author             Date           Modification(s)
 # ----------------   -----------    ---------------
-# Andy Alarcon       2020-09-09     1.0 .. Created, implemented standard input
-# Andy Alarcon       2020-09-11     1.1 .. implemented line by line input check
-#                                          and first iteration of parsing check
-# Andy Alarcon       2020-09-13     1.2 .. Added DB and table creation, added drop
-#                                          for DB and table
-# Andy Alarcon       2020-09-15     1.3 .. Added table query feature
-# Andy Alarcon       2020-09-18     1.4 .. Added table update feature
-# Andy Alarcon       2020-09-21     1.5 .. Fixed a parsing bug
-# Andy Alarcon       2020-09-23     1.6 .. Added a drop database condition a
+# Andy Alarcon       2020-09-27     1.0 ... created
 # -----------------------------------------------------------------------------
 
 import sys
@@ -25,6 +17,9 @@ import shutil
 
 # Global variable to keep track of the current DB in use
 GlobalCurrentDirectory = ""
+
+class MetaData(object):
+    pass
 
 
 def main():
@@ -56,11 +51,21 @@ def main():
             ExecuteCommand(CommandsList[0])
             CommandsList.pop(0)
 
-    #Line by Line input
+    #Line by Line input with multiple line queries 
     else:
         while LineInputCommand.lower() != ".exit":
-            ExecuteCommand(LineInputCommand)
-            LineInputCommand = str(input("--> "))
+            if LineInputCommand.endswith(';') :
+                LineInputCommand = LineInputCommand.replace('\t', '')
+                ExecuteCommand(LineInputCommand)
+                LineInputCommand = ''
+            while not LineInputCommand.endswith(';'):   
+                tempInput = str(input("--> "))
+                if tempInput.lower() == '.exit':
+                    LineInputCommand = '.exit'
+                    break
+                else :
+                    LineInputCommand = LineInputCommand + ' ' + tempInput
+        
 
     print("All done.")
 
@@ -148,9 +153,89 @@ def ExecuteCommand(commandLine):
             except:
                 print(argumentErrorMessage)
 
+        #IF the first keyword is insert
+        # If the first keyword is select
+        elif commandLine[0].lower() == "insert":
+            # Check the remaining ones and execute or display an error
+            try:
+                if commandLine[1].lower() == "into" :
+                    InsertCommand(unalteredCommandLine, commandLine[2:])
+                else:
+                    print("!Failed INSERT command argumments not recognized")
+            except:
+                print(argumentErrorMessage)
+
         # If the first keyword was not recognized above display an error
         else:
             print("!Failed command : '" + commandLine[0] + "' not recognized")
+
+# ----------------------------------------------------------------------------
+# FUNCTION NAME:     GenerateMetadataObject(str)
+# PURPOSE:           This function creates a object based on the metadata
+# -----------------------------------------------------------------------------
+def GenerateMetadataObject(tblName):
+
+    #Generate a Metadata Object
+    MD = MetaData()
+    #Read Metadata from table
+    file = open(GlobalCurrentDirectory + "/" + tblName, "r")
+    MetaFromFile = file.readline()
+    #Split the colums by |
+    MetaSplitByPipe = MetaFromFile.split('|')
+    #Split each colum into two {argument} {datatype}
+    MetaArgs = []
+    for i, _ in enumerate(MetaSplitByPipe):
+        MetaArgs.append(MetaSplitByPipe[i].split())
+
+    for i, _ in enumerate(MetaArgs):
+        setattr(MD, MetaArgs[i][0], MetaArgs[i][1])
+
+    return MD
+
+# ----------------------------------------------------------------------------
+# FUNCTION NAME:     CheckIfDataType(str)
+# PURPOSE:           This function checks if a string is a datatype
+# -----------------------------------------------------------------------------
+def CheckIfDataType(str):
+    pass
+
+
+
+# ----------------------------------------------------------------------------
+# FUNCTION NAME:     InsertCommand(unalteredCommandLine, commandLine[2])
+# PURPOSE:           This function executes the insert command
+# -----------------------------------------------------------------------------
+def InsertCommand(OGcommandLine, commandsList):
+    
+    tblName = commandsList[0]
+    # Find the text args between the parantheses
+    colArgs = ParseCommandByPara(OGcommandLine)
+
+    MDObject = GenerateMetadataObject(tblName)
+
+    global GlobalCurrentDirectory
+    if not GlobalCurrentDirectory:
+        print("!Failed a database is currently not in use")
+    else:
+        # Check if the table/file exists
+        if os.path.exists(GlobalCurrentDirectory + "/" + tblName):
+            # append the add argument
+            file = open(GlobalCurrentDirectory + "/" + tblName, "a")
+
+            file.write('\n')
+            for i, _ in enumerate(colArgs):
+                
+                if len(colArgs) - 1 == i:
+                    file.write(colArgs[i])
+                else:
+                    file.write(colArgs[i] + " | ")
+    
+            file.close()
+            print("1 new record inserted.")
+        else:
+            print("!Failed to modify table " +
+                    tblName + " because it does not exist.")
+
 # ----------------------------------------------------------------------------
 # FUNCTION NAME:     AlterTable(tblName)
 # PURPOSE:           This function executes the alter table command
@@ -367,6 +452,7 @@ def ParseCommandByWord(line):
         line[i] = line[i].strip()
     # Remove any blanks from the list
     line = list(filter(None, line))
+  
 
     return line
 # ----------------------------------------------------------------------------
@@ -381,17 +467,35 @@ def ReadCommandsFileInput():
     FileInputLines = sys.stdin.readlines()
     # New List which will contain the commands that will be executed
     FileInputCommands = []
+    #New list to account for multiple lines
+    MultiLineCommands = []
 
     for line in FileInputLines:
         # Ignore lines that are blank or are comments
-        if line == '\r\n' or "--" in line:
+        if line == '\r\n' or "--" in line or line == '\n':
             pass
         # Remove newline from current line and append to the commands list
         else:
             temp_line = line.replace('\r\n', '')
+            temp_line = temp_line.replace('\t', '')
+            temp_line = temp_line.replace('\n', '')
             FileInputCommands.append(temp_line)
 
-    return FileInputCommands
+    #Temporary variable to combine multi-line commands
+    TemporaryString = ''
+    for line in FileInputCommands:
+        # ; indicates the end of the query 
+        if line.endswith(';'):
+            MultiLineCommands.append(TemporaryString + line)
+            TemporaryString = ''
+        # Concat each line if it does not contain a ;
+        else:
+            TemporaryString = TemporaryString + line
+            if(line == '.exit') :
+                MultiLineCommands.append(line)
+            
+
+    return MultiLineCommands
 
 
 if __name__ == "__main__":
