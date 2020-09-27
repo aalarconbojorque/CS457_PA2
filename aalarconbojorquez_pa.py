@@ -212,7 +212,8 @@ def CheckIfDataTypeMatches(InsertValue, ArgumentPair):
         MetaDataSearch = re.search(r'\((\d*)\)', ArgumentPair[1])
         if MetaDataSearch :
             MetaDataLength = MetaDataSearch.group(1)
-            if len(InsertValue) <= int(MetaDataLength) :
+            
+            if len(InsertValue) <= int(MetaDataLength) + 2 :
                 return True
             else :
                 return False
@@ -273,7 +274,7 @@ def InsertCommand(OGcommandLine, commandsList):
                 for i, _ in enumerate(InsertArgs):
                     if not CheckIfDataTypeMatches(InsertArgs[i], MDargsList[i]) :
                         VariablesChecked = False
-                        print("!Failed the record was not inserted : Data types did not match the metadata.")
+            
 
                 #If the variables matched, insert the record
                 if VariablesChecked :
@@ -284,6 +285,9 @@ def InsertCommand(OGcommandLine, commandsList):
                         else:
                             file.write(InsertArgs[i] + " | ")
                     print("1 new record inserted.")
+                
+                else :
+                    print("!Failed the record was not inserted : Data entered did not match the metadata.")
                     
                 file.close()
             else:
