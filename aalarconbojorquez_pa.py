@@ -147,14 +147,13 @@ def ExecuteCommand(commandLine):
             # Check the remaining ones and execute or display an error
             try:
                 if commandLine[1].lower() == "*" and commandLine[2].lower() == "from":
-                    SelectCommand(commandLine[3])
+                    SelectCommand(commandLine[3].lower())
                 else:
                     print("!Failed SELECT command argumments not recognized")
             except:
                 print(argumentErrorMessage)
 
         #IF the first keyword is insert
-        # If the first keyword is select
         elif commandLine[0].lower() == "insert":
             # Check the remaining ones and execute or display an error
             try:
@@ -247,7 +246,7 @@ def isint(x):
 # -----------------------------------------------------------------------------
 def InsertCommand(OGcommandLine, commandsList):
     
-    tblName = commandsList[0]
+    tblName = commandsList[0].lower()
     # Find the text args between the parantheses
     InsertArgs = ParseCommandByPara(OGcommandLine)
 
@@ -304,7 +303,9 @@ def InsertCommand(OGcommandLine, commandsList):
 def AlterTable(OGcommandLine, commandsList):
 
     if len(commandsList) > 4:
-        tblName = commandsList[0]
+        tblName = commandsList[0].lower()
+        Displaytblname = commandsList[0]
+
         # Find the text between the command ADD and ; for variable argument
         line = OGcommandLine.lower()
         line = re.search(r'add\s\s*(.*)\s*;', line).group(1)
@@ -319,10 +320,10 @@ def AlterTable(OGcommandLine, commandsList):
                 file = open(GlobalCurrentDirectory + "/" + tblName, "a")
                 file.write(" | " + line)
                 file.close()
-                print("Table " + tblName + " modified.")
+                print("Table " + Displaytblname + " modified.")
             else:
                 print("!Failed to modify table " +
-                      tblName + " because it does not exist.")
+                      Displaytblname + " because it does not exist.")
 
     else:
         print("!Failed invalid number of arguments")
@@ -333,6 +334,9 @@ def AlterTable(OGcommandLine, commandsList):
 
 
 def DropTable(tblName):
+    Displaytblname = tblName
+    tblName = tblName.lower()
+
     global GlobalCurrentDirectory
     if not GlobalCurrentDirectory:
         print("!Failed a database is currently not in use")
@@ -341,11 +345,11 @@ def DropTable(tblName):
         if os.path.exists(GlobalCurrentDirectory + "/" + tblName):
             try:
                 os.remove(GlobalCurrentDirectory + "/" + tblName)
-                print("Table " + tblName + " deleted.")
+                print("Table " + Displaytblname + " deleted.")
             except:
                 print("!Failed to delete the table due to an error")
         else:
-            print("!Failed to delete " + tblName +
+            print("!Failed to delete " + Displaytblname +
                   " because it does not exist.")
 # ----------------------------------------------------------------------------
 # FUNCTION NAME:     DropDatabase(DBname)
@@ -391,7 +395,7 @@ def SelectCommand(tblName):
 
         else:
             file = open(GlobalCurrentDirectory + "/" + tblName, "r")
-            LinesRead = file.readline()
+            LinesRead = file.readlines()
             print(LinesRead)
             file.close()
 # ----------------------------------------------------------------------------
@@ -434,6 +438,9 @@ def ParseCommandByPara(line):
 
 def CreateTable(tblName, OGCommandLine):
 
+    Displaytblname = tblName
+    tblName = tblName.lower()
+
     global GlobalCurrentDirectory
     if not GlobalCurrentDirectory:
         print("!Failed a database is currently not in use")
@@ -464,7 +471,7 @@ def CreateTable(tblName, OGCommandLine):
             if not os.path.exists(GlobalCurrentDirectory + "/" + tblName):
 
                 file = open(GlobalCurrentDirectory + "/" + tblName, "w")
-                print("Table " + tblName + " created.")
+                print("Table " + Displaytblname + " created.")
 
                 for i, _ in enumerate(argumentList):
 
@@ -476,7 +483,7 @@ def CreateTable(tblName, OGCommandLine):
                 file.close()
             else:
                 print("!Failed to create table " +
-                      tblName + " because it already exists.")
+                      Displaytblname + " because it already exists.")
 # ----------------------------------------------------------------------------
 # FUNCTION NAME:     CreateDatabase(DBname)
 # PURPOSE:           This function executes the database creation command
