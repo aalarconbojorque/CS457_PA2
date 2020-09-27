@@ -7,7 +7,7 @@
 # MODIFICATION HISTORY:
 # Author             Date           Modification(s)
 # ----------------   -----------    ---------------
-# Andy Alarcon       2020-09-27     1.0 ... created
+# Andy Alarcon       2020-09-27     1.0 ... Added multipleline command parsing, Insertion command with type checking
 # -----------------------------------------------------------------------------
 
 import sys
