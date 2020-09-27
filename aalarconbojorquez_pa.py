@@ -190,16 +190,55 @@ def GenerateMetadataObject(tblName):
     for i, _ in enumerate(MetaArgs):
         setattr(MD, MetaArgs[i][0], MetaArgs[i][1])
 
+    setattr(MD, 'MetaArgsList', MetaArgs)
+
     return MD
 
 # ----------------------------------------------------------------------------
-# FUNCTION NAME:     CheckIfDataType(str)
-# PURPOSE:           This function checks if a string is a datatype
+# FUNCTION NAME:     CheckIfDataTypeMatches(InsertValue, ArgumentPair)
+# PURPOSE:           This function checks if a value matches the correct data type
 # -----------------------------------------------------------------------------
-def CheckIfDataType(str):
-    pass
+def CheckIfDataTypeMatches(InsertValue, ArgumentPair):
+    if isint(InsertValue) and ArgumentPair[1] == 'int':
+        #print (InsertValue + ArgumentPair[1] + "Are a match")
+        return True
 
+    elif isfloat(InsertValue) and ArgumentPair[1] == 'float':
+        #print (InsertValue + ArgumentPair[1] + "Are a match")
+        return True
 
+    elif "char" in ArgumentPair[1] and InsertValue.startswith("'") and InsertValue.endswith("'"):
+        #print (InsertValue + ArgumentPair[1] + "Are a match")
+        MetaDataSearch = re.search(r'\((\d*)\)', ArgumentPair[1])
+        if MetaDataSearch :
+            MetaDataLength = MetaDataSearch.group(1)
+            if len(InsertValue) <= int(MetaDataLength) :
+                return True
+            else :
+                return False
+        else :
+            return False
+    else :
+        return False
+
+#Helps check if a value i a float
+def isfloat(x):
+    try:
+        a = float(x)
+    except ValueError:
+        return False
+    else:
+        return True
+
+#Helps check if a value is an int
+def isint(x):
+    try:
+        a = float(x)
+        b = int(a)
+    except ValueError:
+        return False
+    else:
+        return a == b
 
 # ----------------------------------------------------------------------------
 # FUNCTION NAME:     InsertCommand(unalteredCommandLine, commandLine[2])
@@ -209,32 +248,48 @@ def InsertCommand(OGcommandLine, commandsList):
     
     tblName = commandsList[0]
     # Find the text args between the parantheses
-    colArgs = ParseCommandByPara(OGcommandLine)
-
-    MDObject = GenerateMetadataObject(tblName)
+    InsertArgs = ParseCommandByPara(OGcommandLine)
 
     global GlobalCurrentDirectory
     if not GlobalCurrentDirectory:
         print("!Failed a database is currently not in use")
     else:
-        # Check if the table/file exists
-        if os.path.exists(GlobalCurrentDirectory + "/" + tblName):
-            # append the add argument
-            file = open(GlobalCurrentDirectory + "/" + tblName, "a")
+        #Create an object based on the metadata
+        MDObject = GenerateMetadataObject(tblName)
+        #Get the metadata list which contains the number of arguments
+        MDargsList = getattr(MDObject, 'MetaArgsList')
 
-            file.write('\n')
-            for i, _ in enumerate(colArgs):
+        if len(InsertArgs) != len(MDargsList) :
+            print("!Failed Insert values contains incorrect number of arguments")
+
+        else :
+            # Check if the table/file exists
+            if os.path.exists(GlobalCurrentDirectory + "/" + tblName):
+                # append the add argument
+                file = open(GlobalCurrentDirectory + "/" + tblName, "a")
                 
-                if len(colArgs) - 1 == i:
-                    file.write(colArgs[i])
-                else:
-                    file.write(colArgs[i] + " | ")
-    
-            file.close()
-            print("1 new record inserted.")
-        else:
-            print("!Failed to modify table " +
-                    tblName + " because it does not exist.")
+                #Check that each variable is of the correct type
+                VariablesChecked = True
+                for i, _ in enumerate(InsertArgs):
+                    if not CheckIfDataTypeMatches(InsertArgs[i], MDargsList[i]) :
+                        VariablesChecked = False
+                        print("!Failed the record was not inserted : Data types did not match the metadata.")
+
+                #If the variables matched, insert the record
+                if VariablesChecked :
+                    file.write('\n')
+                    for i, _ in enumerate(InsertArgs):
+                        if len(InsertArgs) - 1 == i:
+                            file.write(InsertArgs[i])
+                        else:
+                            file.write(InsertArgs[i] + " | ")
+                    print("1 new record inserted.")
+                    
+                file.close()
+            else:
+                print("!Failed to modify table " +
+                        tblName + " because it does not exist.")
+
 
 # ----------------------------------------------------------------------------
 # FUNCTION NAME:     AlterTable(tblName)
