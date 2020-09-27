@@ -15,7 +15,7 @@
 # Andy Alarcon       2020-09-15     1.3 .. Added table query feature
 # Andy Alarcon       2020-09-18     1.4 .. Added table update feature
 # Andy Alarcon       2020-09-21     1.5 .. Fixed a parsing bug
-# Andy Alarcon       2020-09-23     1.6 .. Added a drop database condition
+# Andy Alarcon       2020-09-23     1.6 .. Added a drop database condition a
 # -----------------------------------------------------------------------------
 
 import sys
