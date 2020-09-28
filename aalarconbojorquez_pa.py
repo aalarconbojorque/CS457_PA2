@@ -20,10 +20,16 @@ import shutil
 GlobalCurrentDirectory = ""
 
 # A class to handle the metadata manipulation
-
-
 class MetaData(object):
     pass
+
+#Operators for defined for conditon checking
+op = {'>': lambda x, y: x > y,
+      '<': lambda x, y: x < y,
+      '>=': lambda x, y: x >= y,
+      '<=': lambda x, y: x <= y,
+      '==': lambda x, y: x == y,
+      '!=': lambda x, y: x != y,}
 
 
 def main():
@@ -486,7 +492,7 @@ def SelectCommand(commandsList):
 
                     # Based on the indexList(cols we want) and TableData create a new list to display
                     NewTableList = getNewTableList(
-                        IndexList, TableDataFileLines)
+                        IndexList, TableDataFileLines, False, [])
 
                     # Get Args List to search for column names
                     ObjectArgList = getattr(MD, 'MetaArgsList')
@@ -506,6 +512,28 @@ def SelectCommand(commandsList):
                             else:
                                 print(NewTableList[i][j] + "|", end='')
 
+                elif SelectWhereCommand:
+                    #0:columnname , 1: operator , 2: condition
+                    selectWhereList = selectWhere.split()
+                    
+                     # MetaData Object to assist
+                    MD = MetaData()
+                    MD = GenerateMetadataObject(selectTableName)
+
+                    #Generate templist to look up index in table
+                    tempList = list()
+                    tempList.append(selectWhereList[0])
+                    IndexList = getIndexList(MD, tempList)
+
+                     # Split each table row in a list
+                    for i, _ in enumerate(TableDataFileLines):
+                        TableDataFileLines[i] = TableDataFileLines[i].split(
+                            '|')
+
+                    NewTableL = getNewTableList(IndexList, TableDataFileLines, True, selectWhereList)
+
+                    print("Tes")
+
                 # IF selectCouumns = name, name and selectWhereCommand = True
                     # Grab data from those colums
                     # Filter the data
@@ -520,27 +548,58 @@ def SelectCommand(commandsList):
 # -----------------------------------------------------------------------------
 
 
-def getNewTableList(IndexList, TableDataLines):
-    tableList = list()
-    # Append IndexList to index 0
-    tableList.append(IndexList)
+def getNewTableList(IndexList, TableDataLines, isWhereActive, WhereCondition):
 
-    # For every row
-    for i, _ in enumerate(TableDataLines):
-        # Create a row list
-        rowList = list()
-        # For certain columns in the row
-        for j, _ in enumerate(IndexList):
-            # print(TableDataLines[i][IndexList[j]], end=' | ')
-            # Append the columns to the new row
-            rowList.append(TableDataLines[i][IndexList[j]])
-        # print('')
-        # print(rowList)
-        # Append the row to the table list
-        tableList.append(rowList)
+    #If there is a where condition
+    if isWhereActive :
+        tableList = list()
+        # Append IndexList to index 0
+        tableList.append(IndexList)
 
-    return tableList
+        # For every row
+        for i, _ in enumerate(TableDataLines):
+            # Create a row list
+            rowList = TableDataLines[i]
+            AddToList = False
+            # For certain columns in the row
+            for j, _ in enumerate(IndexList):
+           
+                SecondValue = float(WhereCondition[2])
+                FirstValue = float(TableDataLines[i][IndexList[j]])
+                if(op[WhereCondition[1]](FirstValue, SecondValue)) : 
+                    AddToList = True
 
+            # Append the row to the table list
+            if AddToList :
+                tableList.append(rowList)
+
+        #List returned with items filter by the condition 
+        return tableList
+    else:
+        tableList = list()
+        # Append IndexList to index 0
+        tableList.append(IndexList)
+
+        # For every row
+        for i, _ in enumerate(TableDataLines):
+            # Create a row list
+            rowList = list()
+            # For certain columns in the row
+            for j, _ in enumerate(IndexList):
+                # print(TableDataLines[i][IndexList[j]], end=' | ')
+                # Append the columns to the new row
+                rowList.append(TableDataLines[i][IndexList[j]])
+            # print('')
+            # print(rowList)
+            # Append the row to the table list
+            tableList.append(rowList)
+
+        return tableList
+
+
+
+
+    
 
 # ----------------------------------------------------------------------------
 # FUNCTION NAME:     getIndexList(DBname)
