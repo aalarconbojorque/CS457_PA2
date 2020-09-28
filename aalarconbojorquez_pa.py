@@ -8,6 +8,7 @@
 # Author             Date           Modification(s)
 # ----------------   -----------    ---------------
 # Andy Alarcon       2020-09-27     1.0 ... Added multipleline command parsing, Insertion command with type checking
+# Andy Alarcon       2020-09-28     1.1 ... Added 
 # -----------------------------------------------------------------------------
 
 import sys
@@ -18,6 +19,7 @@ import shutil
 # Global variable to keep track of the current DB in use
 GlobalCurrentDirectory = ""
 
+#A class to handle the metadata manipulation 
 class MetaData(object):
     pass
 
@@ -146,10 +148,7 @@ def ExecuteCommand(commandLine):
         elif commandLine[0].lower() == "select":
             # Check the remaining ones and execute or display an error
             try:
-                if commandLine[1].lower() == "*" and commandLine[2].lower() == "from":
-                    SelectCommand(commandLine[3].lower())
-                else:
-                    print("!Failed SELECT command argumments not recognized")
+                SelectCommand(commandLine[0:])
             except:
                 print(argumentErrorMessage)
 
@@ -377,27 +376,98 @@ def DropDatabase(DBname):
     else:
         print("!Failed to delete " + DBname + " because it does not exist.")
 # ----------------------------------------------------------------------------
-# FUNCTION NAME:     SelectCommand(tblName)
+# FUNCTION NAME:     SelectCommand(commandsList)
 # PURPOSE:           This function executes the select command
 # -----------------------------------------------------------------------------
 
 
-def SelectCommand(tblName):
+def SelectCommand(commandsList):
+    
     global GlobalCurrentDirectory
-    if not GlobalCurrentDirectory:
-        print("!Failed a database is currently not in use")
-    else:
-        # Check if the table/file exists
-        if not os.path.exists(GlobalCurrentDirectory + "/" + tblName):
 
-            print("!Failed to query table " +
-                  tblName + " because it does not exist.")
+    commandLine = ' '.join(str(e) for e in commandsList)
 
+    #Check if the command has the format select name, name from table ;
+    #Group 1 = name , name 
+    #Group 2 = tablename
+    SelectCommand = re.search(r'(?i)select\s*(.*?)\s*from\s*(\w*)\s*;', commandLine)
+
+    #Check if the command has the format select name, name from table where condition;
+    #Group 1 = name , name 
+    #Group 2 = tablename
+    #Group 3 = conditon
+    SelectWhereCommand = re.search(r'(?i)select\s*(.*?)\s*from\s*(\w*)\s*where\s*(.*?)\s*;', commandLine)
+    
+    selectColumns = ''
+    selectTableName = ''
+    selectWhere = ''
+
+    #Check if the regular expressions had a match if so populate the groups
+    if SelectCommand :
+        selectColumns = SelectCommand.group(1)
+        selectTableName = SelectCommand.group(2)
+        print('Select without the where condition')
+    elif SelectWhereCommand :
+        selectColumns = SelectWhereCommand.group(1)
+        selectTableName = SelectWhereCommand.group(2)
+        selectWhere = SelectWhereCommand.group(3)
+        print('Select with the where condition')
+    else :
+        print('SELECT COMMAND NOT RECOGNIZED')
+
+
+    #If either RE had a match grab the data from the file/table
+    MetaDataFileLine = ''
+    TableDataFileLines = ''
+    if (SelectCommand and len(selectTableName) > 0 and len(selectColumns) > 0) or (SelectWhereCommand 
+    and len(selectTableName) > 0 and len(selectColumns) > 0 and len(selectWhere) > 0) : 
+        if not GlobalCurrentDirectory:
+            print("!Failed a database is currently not in use")
         else:
-            file = open(GlobalCurrentDirectory + "/" + tblName, "r")
-            LinesRead = file.readlines()
-            print(LinesRead)
-            file.close()
+            # Check if the table/file exists
+            if not os.path.exists(GlobalCurrentDirectory + "/" + selectTableName):
+
+                print("!Failed to query table " +
+                    selectTableName + " because it does not exist.")
+
+            else:
+                file = open(GlobalCurrentDirectory + "/" + selectTableName, "r")
+                MetaDataFileLine = file.readline()
+                TableDataFileLines = file.readlines()
+                print(MetaDataFileLine)
+                print(TableDataFileLines)
+                file.close()
+
+                #If selectColumns = * display everything 
+                #IF selectCouumns = name, name and selectWhereCommand = false
+                    # Grab data from those colums
+                    # Display
+                #IF selectCouumns = name, name and selectWhereCommand = True
+                    # Grab data from those colums
+                    # Filter the data
+                    # Display
+    else :
+        print("!Failed select command arguments were invalid")
+
+
+
+
+
+    # global GlobalCurrentDirectory
+    # if not GlobalCurrentDirectory:
+    #     print("!Failed a database is currently not in use")
+    # else:
+    #     # Check if the table/file exists
+    #     if not os.path.exists(GlobalCurrentDirectory + "/" + tblName):
+
+    #         print("!Failed to query table " +
+    #               tblName + " because it does not exist.")
+
+    #     else:
+    #         file = open(GlobalCurrentDirectory + "/" + tblName, "r")
+    #         LinesRead = file.readlines()
+    #         print(LinesRead)
+    #         file.close()
 # ----------------------------------------------------------------------------
 # FUNCTION NAME:     UseDatabase(DBname)
 # PURPOSE:           This function executes the database use command
