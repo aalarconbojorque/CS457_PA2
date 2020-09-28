@@ -405,11 +405,11 @@ def SelectCommand(commandsList):
     #Check if the regular expressions had a match if so populate the groups
     if SelectCommand :
         selectColumns = SelectCommand.group(1)
-        selectTableName = SelectCommand.group(2)
-        print('Select without the where condition')
+        selectTableName = SelectCommand.group(2).lower()
+        print('Select without the where condition\n')
     elif SelectWhereCommand :
         selectColumns = SelectWhereCommand.group(1)
-        selectTableName = SelectWhereCommand.group(2)
+        selectTableName = SelectWhereCommand.group(2).lower()
         selectWhere = SelectWhereCommand.group(3)
         print('Select with the where condition')
     else :
@@ -434,9 +434,56 @@ def SelectCommand(commandsList):
                 file = open(GlobalCurrentDirectory + "/" + selectTableName, "r")
                 MetaDataFileLine = file.readline()
                 TableDataFileLines = file.readlines()
-                print(MetaDataFileLine)
-                print(TableDataFileLines)
+                MetaDataFileLine = MetaDataFileLine.replace('\n', '')
+                for i, _ in enumerate(TableDataFileLines):
+                    TableDataFileLines[i] = TableDataFileLines[i].replace('\n', '')
+                
                 file.close()
+
+
+                if SelectCommand and selectColumns == '*':
+                    print(MetaDataFileLine)
+                    for line in TableDataFileLines :
+                        print(line)
+
+                elif SelectCommand :
+                    MD = MetaData()
+                    MD = GenerateMetadataObject(selectTableName)
+
+                    columnList = selectColumns.split(',')
+
+                    for i, _ in enumerate(columnList):
+                        columnList[i] = columnList[i].strip()
+                    
+                    for i, _ in enumerate(TableDataFileLines):
+                        TableDataFileLines[i] = TableDataFileLines[i].split('|')
+
+                    for i, _ in enumerate(TableDataFileLines):
+                        for j, _ in enumerate(TableDataFileLines[i]):
+                            TableDataFileLines[i][j] = TableDataFileLines[i][j].strip()
+                    
+                    IndexList = []
+                    ObjectArgList = getattr(MD, 'MetaArgsList')
+                    ColumnsFound = True
+                    #Find Indices from the object
+                    for i, _ in enumerate(columnList):
+                        for j, _ in enumerate(ObjectArgList):
+                            if(columnList[i] == ObjectArgList[j][0]):
+                                IndexList.append(j)
+                    
+                    for i, _ in enumerate(TableDataFileLines):
+                        for j, _ in enumerate(IndexList):
+                            print(TableDataFileLines[i][IndexList[j]], end=' | ')
+                        print('')
+           
+
+                    
+
+                    print("Test")
+
+
+
+
 
                 #If selectColumns = * display everything 
                 #IF selectCouumns = name, name and selectWhereCommand = false
