@@ -3,10 +3,12 @@
 
 USE CS457_PA2;
 
-select pid, price from product;
 
-select name, pid, price from product;
-select * from product;
-select name, pop from product;
+select * from Product;
+select name, pid from product;
+select pid, price from product;
+select name from product;
+select * from product where pid != 2;
+
 
 .exit

@@ -8,7 +8,7 @@
 # Author             Date           Modification(s)
 # ----------------   -----------    ---------------
 # Andy Alarcon       2020-09-27     1.0 ... Added multipleline command parsing, Insertion command with type checking
-# Andy Alarcon       2020-09-28     1.1 ... Added 
+# Andy Alarcon       2020-09-28     1.1 ... Added column specific select command
 # -----------------------------------------------------------------------------
 
 import sys
@@ -19,7 +19,9 @@ import shutil
 # Global variable to keep track of the current DB in use
 GlobalCurrentDirectory = ""
 
-#A class to handle the metadata manipulation 
+# A class to handle the metadata manipulation
+
+
 class MetaData(object):
     pass
 
@@ -53,21 +55,20 @@ def main():
             ExecuteCommand(CommandsList[0])
             CommandsList.pop(0)
 
-    #Line by Line input with multiple line queries 
+    # Line by Line input with multiple line queries
     else:
         while LineInputCommand.lower() != ".exit":
-            if LineInputCommand.endswith(';') :
+            if LineInputCommand.endswith(';'):
                 LineInputCommand = LineInputCommand.replace('\t', '')
                 ExecuteCommand(LineInputCommand)
                 LineInputCommand = ''
-            while not LineInputCommand.endswith(';'):   
+            while not LineInputCommand.endswith(';'):
                 tempInput = str(input("--> "))
                 if tempInput.lower() == '.exit':
                     LineInputCommand = '.exit'
                     break
-                else :
+                else:
                     LineInputCommand = LineInputCommand + ' ' + tempInput
-        
 
     print("All done.")
 
@@ -152,11 +153,11 @@ def ExecuteCommand(commandLine):
             except:
                 print(argumentErrorMessage)
 
-        #IF the first keyword is insert
+        # IF the first keyword is insert
         elif commandLine[0].lower() == "insert":
             # Check the remaining ones and execute or display an error
             try:
-                if commandLine[1].lower() == "into" :
+                if commandLine[1].lower() == "into":
                     InsertCommand(unalteredCommandLine, commandLine[2:])
                 else:
                     print("!Failed INSERT command argumments not recognized")
@@ -171,16 +172,18 @@ def ExecuteCommand(commandLine):
 # FUNCTION NAME:     GenerateMetadataObject(str)
 # PURPOSE:           This function creates a object based on the metadata
 # -----------------------------------------------------------------------------
+
+
 def GenerateMetadataObject(tblName):
 
-    #Generate a Metadata Object
+    # Generate a Metadata Object
     MD = MetaData()
-    #Read Metadata from table
+    # Read Metadata from table
     file = open(GlobalCurrentDirectory + "/" + tblName, "r")
     MetaFromFile = file.readline()
-    #Split the colums by |
+    # Split the colums by |
     MetaSplitByPipe = MetaFromFile.split('|')
-    #Split each colum into two {argument} {datatype}
+    # Split each colum into two {argument} {datatype}
     MetaArgs = []
     for i, _ in enumerate(MetaSplitByPipe):
         MetaArgs.append(MetaSplitByPipe[i].split())
@@ -196,31 +199,35 @@ def GenerateMetadataObject(tblName):
 # FUNCTION NAME:     CheckIfDataTypeMatches(InsertValue, ArgumentPair)
 # PURPOSE:           This function checks if a value matches the correct data type
 # -----------------------------------------------------------------------------
+
+
 def CheckIfDataTypeMatches(InsertValue, ArgumentPair):
     if isint(InsertValue) and ArgumentPair[1] == 'int':
-        #print (InsertValue + ArgumentPair[1] + "Are a match")
+        # print (InsertValue + ArgumentPair[1] + "Are a match")
         return True
 
     elif isfloat(InsertValue) and ArgumentPair[1] == 'float':
-        #print (InsertValue + ArgumentPair[1] + "Are a match")
+        # print (InsertValue + ArgumentPair[1] + "Are a match")
         return True
 
     elif "char" in ArgumentPair[1] and InsertValue.startswith("'") and InsertValue.endswith("'"):
-        #print (InsertValue + ArgumentPair[1] + "Are a match")
+        # print (InsertValue + ArgumentPair[1] + "Are a match")
         MetaDataSearch = re.search(r'\((\d*)\)', ArgumentPair[1])
-        if MetaDataSearch :
+        if MetaDataSearch:
             MetaDataLength = MetaDataSearch.group(1)
-            
-            if len(InsertValue) <= int(MetaDataLength) + 2 :
+
+            if len(InsertValue) <= int(MetaDataLength) + 2:
                 return True
-            else :
+            else:
                 return False
-        else :
+        else:
             return False
-    else :
+    else:
         return False
 
-#Helps check if a value i a float
+# Helps check if a value i a float
+
+
 def isfloat(x):
     try:
         a = float(x)
@@ -229,7 +236,9 @@ def isfloat(x):
     else:
         return True
 
-#Helps check if a value is an int
+# Helps check if a value is an int
+
+
 def isint(x):
     try:
         a = float(x)
@@ -243,8 +252,10 @@ def isint(x):
 # FUNCTION NAME:     InsertCommand(unalteredCommandLine, commandLine[2])
 # PURPOSE:           This function executes the insert command
 # -----------------------------------------------------------------------------
+
+
 def InsertCommand(OGcommandLine, commandsList):
-    
+
     tblName = commandsList[0].lower()
     # Find the text args between the parantheses
     InsertArgs = ParseCommandByPara(OGcommandLine)
@@ -253,44 +264,44 @@ def InsertCommand(OGcommandLine, commandsList):
     if not GlobalCurrentDirectory:
         print("!Failed a database is currently not in use")
     else:
-        #Create an object based on the metadata
+        # Create an object based on the metadata
         MDObject = GenerateMetadataObject(tblName)
-        #Get the metadata list which contains the number of arguments
+        # Get the metadata list which contains the number of arguments
         MDargsList = getattr(MDObject, 'MetaArgsList')
 
-        if len(InsertArgs) != len(MDargsList) :
+        if len(InsertArgs) != len(MDargsList):
             print("!Failed Insert values contains incorrect number of arguments")
 
-        else :
+        else:
             # Check if the table/file exists
             if os.path.exists(GlobalCurrentDirectory + "/" + tblName):
                 # append the add argument
                 file = open(GlobalCurrentDirectory + "/" + tblName, "a")
-                
-                #Check that each variable is of the correct type
+
+                # Check that each variable is of the correct type
                 VariablesChecked = True
                 for i, _ in enumerate(InsertArgs):
-                    if not CheckIfDataTypeMatches(InsertArgs[i], MDargsList[i]) :
+                    if not CheckIfDataTypeMatches(InsertArgs[i], MDargsList[i]):
                         VariablesChecked = False
-            
 
-                #If the variables matched, insert the record
-                if VariablesChecked :
+                # If the variables matched, insert the record
+                if VariablesChecked:
                     file.write('\n')
                     for i, _ in enumerate(InsertArgs):
                         if len(InsertArgs) - 1 == i:
                             file.write(InsertArgs[i])
                         else:
-                            file.write(InsertArgs[i] + " | ")
+                            file.write(InsertArgs[i] + "|")
                     print("1 new record inserted.")
-                
-                else :
-                    print("!Failed the record was not inserted : Data entered did not match the metadata.")
-                    
+
+                else:
+                    print(
+                        "!Failed the record was not inserted : Data entered did not match the metadata.")
+
                 file.close()
             else:
                 print("!Failed to modify table " +
-                        tblName + " because it does not exist.")
+                      tblName + " because it does not exist.")
 
 
 # ----------------------------------------------------------------------------
@@ -366,7 +377,7 @@ def DropDatabase(DBname):
 
             # If the global database was dropped, reset global variable
             global GlobalCurrentDirectory
-            if GlobalCurrentDirectory == DBname :
+            if GlobalCurrentDirectory == DBname:
                 GlobalCurrentDirectory = ""
 
             print("Database " + DBname + " deleted.")
@@ -382,45 +393,49 @@ def DropDatabase(DBname):
 
 
 def SelectCommand(commandsList):
-    
+
     global GlobalCurrentDirectory
 
     commandLine = ' '.join(str(e) for e in commandsList)
 
-    #Check if the command has the format select name, name from table ;
-    #Group 1 = name , name 
-    #Group 2 = tablename
-    SelectCommand = re.search(r'(?i)select\s*(.*?)\s*from\s*(\w*)\s*;', commandLine)
+    # Check if the command has the format select name, name from table ;
+    # Group 1 = name , name
+    # Group 2 = tablename
+    SelectCommand = re.search(
+        r'(?i)select\s*(.*?)\s*from\s*(\w*)\s*;', commandLine)
 
-    #Check if the command has the format select name, name from table where condition;
-    #Group 1 = name , name 
-    #Group 2 = tablename
-    #Group 3 = conditon
-    SelectWhereCommand = re.search(r'(?i)select\s*(.*?)\s*from\s*(\w*)\s*where\s*(.*?)\s*;', commandLine)
-    
+    # Check if the command has the format select name, name from table where condition;
+    # Group 1 = name , name
+    # Group 2 = tablename
+    # Group 3 = conditon
+    SelectWhereCommand = re.search(
+        r'(?i)select\s*(.*?)\s*from\s*(\w*)\s*where\s*(.*?)\s*;', commandLine)
+
+    # The columns we want
     selectColumns = ''
+    # The table name
     selectTableName = ''
+    # The where condition if exists
     selectWhere = ''
 
-    #Check if the regular expressions had a match if so populate the groups
-    if SelectCommand :
+    # Check if the regular expressions had a match if so populate the groups
+    if SelectCommand:
         selectColumns = SelectCommand.group(1)
         selectTableName = SelectCommand.group(2).lower()
         print('Select without the where condition\n')
-    elif SelectWhereCommand :
+    elif SelectWhereCommand:
         selectColumns = SelectWhereCommand.group(1)
         selectTableName = SelectWhereCommand.group(2).lower()
         selectWhere = SelectWhereCommand.group(3)
         print('Select with the where condition')
-    else :
+    else:
         print('SELECT COMMAND NOT RECOGNIZED')
 
-
-    #If either RE had a match grab the data from the file/table
+    # If either RE had a match grab the data from the file/table
     MetaDataFileLine = ''
     TableDataFileLines = ''
-    if (SelectCommand and len(selectTableName) > 0 and len(selectColumns) > 0) or (SelectWhereCommand 
-    and len(selectTableName) > 0 and len(selectColumns) > 0 and len(selectWhere) > 0) : 
+    if (SelectCommand and len(selectTableName) > 0 and len(selectColumns) > 0) or (SelectWhereCommand
+                                                                                   and len(selectTableName) > 0 and len(selectColumns) > 0 and len(selectWhere) > 0):
         if not GlobalCurrentDirectory:
             print("!Failed a database is currently not in use")
         else:
@@ -428,93 +443,128 @@ def SelectCommand(commandsList):
             if not os.path.exists(GlobalCurrentDirectory + "/" + selectTableName):
 
                 print("!Failed to query table " +
-                    selectTableName + " because it does not exist.")
+                      selectTableName + " because it does not exist.")
 
             else:
-                file = open(GlobalCurrentDirectory + "/" + selectTableName, "r")
+                # Grab table data and clean up
+                file = open(GlobalCurrentDirectory +
+                            "/" + selectTableName, "r")
                 MetaDataFileLine = file.readline()
                 TableDataFileLines = file.readlines()
                 MetaDataFileLine = MetaDataFileLine.replace('\n', '')
                 for i, _ in enumerate(TableDataFileLines):
-                    TableDataFileLines[i] = TableDataFileLines[i].replace('\n', '')
-                
+                    TableDataFileLines[i] = TableDataFileLines[i].replace(
+                        '\n', '')
+
                 file.close()
 
-
+                # If the command has *, display all with no where condition
                 if SelectCommand and selectColumns == '*':
                     print(MetaDataFileLine)
-                    for line in TableDataFileLines :
+                    for line in TableDataFileLines:
                         print(line)
 
-                elif SelectCommand :
+                # If the command has column names, display only those ones with no where cond
+                elif SelectCommand:
+                    # MetaData Object to assist
                     MD = MetaData()
                     MD = GenerateMetadataObject(selectTableName)
 
-                    columnList = selectColumns.split(',')
-
-                    for i, _ in enumerate(columnList):
-                        columnList[i] = columnList[i].strip()
-                    
+                    # Split the entered columns by  ,
+                    selectColumnsList = selectColumns.split(',')
+                    # Remove any blanks
+                    for i, _ in enumerate(selectColumnsList):
+                        selectColumnsList[i] = selectColumnsList[i].strip()
+                    # Split each table row in a list
                     for i, _ in enumerate(TableDataFileLines):
-                        TableDataFileLines[i] = TableDataFileLines[i].split('|')
+                        TableDataFileLines[i] = TableDataFileLines[i].split(
+                            '|')
 
-                    for i, _ in enumerate(TableDataFileLines):
-                        for j, _ in enumerate(TableDataFileLines[i]):
-                            TableDataFileLines[i][j] = TableDataFileLines[i][j].strip()
-                    
-                    IndexList = []
+                    # IndexList will contain a list of indexes of the columns we want
+                    # We can retrieve it based on the object and columns we want
+                    IndexList = getIndexList(MD, selectColumnsList)
+
+                    # Based on the indexList(cols we want) and TableData create a new list to display
+                    NewTableList = getNewTableList(
+                        IndexList, TableDataFileLines)
+
+                    # Get Args List to search for column names
                     ObjectArgList = getattr(MD, 'MetaArgsList')
-                    ColumnsFound = True
-                    #Find Indices from the object
-                    for i, _ in enumerate(columnList):
-                        for j, _ in enumerate(ObjectArgList):
-                            if(columnList[i] == ObjectArgList[j][0]):
-                                IndexList.append(j)
-                    
-                    for i, _ in enumerate(TableDataFileLines):
-                        for j, _ in enumerate(IndexList):
-                            print(TableDataFileLines[i][IndexList[j]], end=' | ')
-                        print('')
-           
 
-                    
+                    # Display column names
+                    for i, _ in enumerate(NewTableList[0]):
+                        tempStr = ' '.join(ObjectArgList[NewTableList[0][i]])
+                        if len(NewTableList[0]) - 1 == i:
+                            print(tempStr)
+                        else:
+                            print(tempStr + "|", end='')
 
-                    print("Test")
+                    for i in range(1, len(NewTableList)):
+                        for j in range(len(NewTableList[i])):
+                            if len(NewTableList[i]) - 1 == j:
+                                print(NewTableList[i][j])
+                            else:
+                                print(NewTableList[i][j] + "|", end='')
 
-
-
-
-
-                #If selectColumns = * display everything 
-                #IF selectCouumns = name, name and selectWhereCommand = false
-                    # Grab data from those colums
-                    # Display
-                #IF selectCouumns = name, name and selectWhereCommand = True
+                # IF selectCouumns = name, name and selectWhereCommand = True
                     # Grab data from those colums
                     # Filter the data
                     # Display
-    else :
+    else:
         print("!Failed select command arguments were invalid")
 
+# ----------------------------------------------------------------------------
+# FUNCTION NAME:     getNewTableList(DBname)
+# PURPOSE:           This function will return a new table list based on
+#                    the index list we give it (remove columns)
+# -----------------------------------------------------------------------------
 
 
+def getNewTableList(IndexList, TableDataLines):
+    tableList = list()
+    # Append IndexList to index 0
+    tableList.append(IndexList)
+
+    # For every row
+    for i, _ in enumerate(TableDataLines):
+        # Create a row list
+        rowList = list()
+        # For certain columns in the row
+        for j, _ in enumerate(IndexList):
+            # print(TableDataLines[i][IndexList[j]], end=' | ')
+            # Append the columns to the new row
+            rowList.append(TableDataLines[i][IndexList[j]])
+        # print('')
+        # print(rowList)
+        # Append the row to the table list
+        tableList.append(rowList)
+
+    return tableList
 
 
-    # global GlobalCurrentDirectory
-    # if not GlobalCurrentDirectory:
-    #     print("!Failed a database is currently not in use")
-    # else:
-    #     # Check if the table/file exists
-    #     if not os.path.exists(GlobalCurrentDirectory + "/" + tblName):
+# ----------------------------------------------------------------------------
+# FUNCTION NAME:     getIndexList(DBname)
+# PURPOSE:           This function will return a list on indices corresponding
+#                    to the location on the table
+# -----------------------------------------------------------------------------
 
-    #         print("!Failed to query table " +
-    #               tblName + " because it does not exist.")
 
-    #     else:
-    #         file = open(GlobalCurrentDirectory + "/" + tblName, "r")
-    #         LinesRead = file.readlines()
-    #         print(LinesRead)
-    #         file.close()
+def getIndexList(MD, selectColumnsList):
+    # MD is the metadata object
+    # selectColumnsList is the list of columns we want
+
+    # IndexList will contain a list of indices of the columns we want
+    IndexList = []
+    # Grab the list from the metadata object
+    ObjectArgList = getattr(MD, 'MetaArgsList')
+    # Find Indices from the object Ex: [0 , 2] columns 0 and 2
+    for i, _ in enumerate(selectColumnsList):
+        for j, _ in enumerate(ObjectArgList):
+            if(selectColumnsList[i] == ObjectArgList[j][0]):
+                IndexList.append(j)
+
+    return IndexList
+
 # ----------------------------------------------------------------------------
 # FUNCTION NAME:     UseDatabase(DBname)
 # PURPOSE:           This function executes the database use command
@@ -595,7 +645,7 @@ def CreateTable(tblName, OGCommandLine):
                     if len(argumentList) - 1 == i:
                         file.write(argumentList[i])
                     else:
-                        file.write(argumentList[i] + " | ")
+                        file.write(argumentList[i] + "|")
 
                 file.close()
             else:
@@ -635,7 +685,6 @@ def ParseCommandByWord(line):
         line[i] = line[i].strip()
     # Remove any blanks from the list
     line = list(filter(None, line))
-  
 
     return line
 # ----------------------------------------------------------------------------
@@ -650,7 +699,7 @@ def ReadCommandsFileInput():
     FileInputLines = sys.stdin.readlines()
     # New List which will contain the commands that will be executed
     FileInputCommands = []
-    #New list to account for multiple lines
+    # New list to account for multiple lines
     MultiLineCommands = []
 
     for line in FileInputLines:
@@ -664,19 +713,18 @@ def ReadCommandsFileInput():
             temp_line = temp_line.replace('\n', '')
             FileInputCommands.append(temp_line)
 
-    #Temporary variable to combine multi-line commands
+    # Temporary variable to combine multi-line commands
     TemporaryString = ''
     for line in FileInputCommands:
-        # ; indicates the end of the query 
+        # ; indicates the end of the query
         if line.endswith(';'):
             MultiLineCommands.append(TemporaryString + line)
             TemporaryString = ''
         # Concat each line if it does not contain a ;
         else:
             TemporaryString = TemporaryString + line
-            if(line == '.exit') :
+            if(line == '.exit'):
                 MultiLineCommands.append(line)
-            
 
     return MultiLineCommands
 
