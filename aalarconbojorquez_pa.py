@@ -9,6 +9,7 @@
 # ----------------   -----------    ---------------
 # Andy Alarcon       2020-09-27     1.0 ... Added multipleline command parsing, Insertion command with type checking
 # Andy Alarcon       2020-09-28     1.1 ... Added column specific select command
+# Andy Alarcon       2020-09-29     1.2 ... Added where condition feature to select command
 # -----------------------------------------------------------------------------
 
 import sys
@@ -23,13 +24,14 @@ GlobalCurrentDirectory = ""
 class MetaData(object):
     pass
 
-#Operators for defined for conditon checking
+
+# Operators for defined for conditon checking in queries
 op = {'>': lambda x, y: x > y,
       '<': lambda x, y: x < y,
       '>=': lambda x, y: x >= y,
       '<=': lambda x, y: x <= y,
       '=': lambda x, y: x == y,
-      '!=': lambda x, y: x != y,}
+      '!=': lambda x, y: x != y, }
 
 
 def main():
@@ -509,36 +511,37 @@ def SelectCommand(commandsList):
                             else:
                                 print(NewTableList[i][j] + "|", end='')
 
+                # If the command has a where condition and we do or don't want to display certain columns
                 elif SelectWhereCommand:
 
-                    
                     # Split the entered columns by  ,
                     selectColumnsList = selectColumns.split(',')
                     # Remove any blanks
                     for i, _ in enumerate(selectColumnsList):
                         selectColumnsList[i] = selectColumnsList[i].strip()
 
-                    #0:columnname , 1: operator , 2: condition
+                    # 0:columnname , 1: operator , 2: condition
                     selectWhereList = selectWhere.split()
-                    
-                     # MetaData Object to assist
+
+                    # MetaData Object to assist
                     MD = MetaData()
                     MD = GenerateMetadataObject(selectTableName)
 
-                    #Generate templist to look up index in table
+                    # Generate templist to look up index in table
                     tempList = list()
                     tempList.append(selectWhereList[0])
                     IndexList = getIndexList(MD, tempList)
 
-                     # Split each table row in a list
+                    # Split each table row in a list
                     for i, _ in enumerate(TableDataFileLines):
                         TableDataFileLines[i] = TableDataFileLines[i].split(
                             '|')
 
-                    #Filter all the data based on the where condition
-                    NewTableWhere = getNewTableList(IndexList, TableDataFileLines, True, selectWhereList)
+                    # Filter all the data based on the where condition
+                    NewTableWhere = getNewTableList(
+                        IndexList, TableDataFileLines, True, selectWhereList)
 
-                    #If we want all columns just display all the data
+                    # If we want all columns just display all the data
                     if selectColumns == '*':
                         print(MetaDataFileLine)
                         for i in range(1, len(NewTableWhere)):
@@ -547,17 +550,19 @@ def SelectCommand(commandsList):
                                     print(NewTableWhere[i][j])
                                 else:
                                     print(NewTableWhere[i][j] + "|", end='')
-                    
-                    else : 
+
+                    else:
                         # Get Args List to search for column names
                         ObjectArgList = getattr(MD, 'MetaArgsList')
                         SelectIndexList = getIndexList(MD, selectColumnsList)
-                        #Filter columns based on the index list
-                        NewTableWhereCols = getNewTableList(SelectIndexList, NewTableWhere[1:], False, [])
+                        # Filter columns based on the index list
+                        NewTableWhereCols = getNewTableList(
+                            SelectIndexList, NewTableWhere[1:], False, [])
 
                         # Display column names
                         for i, _ in enumerate(NewTableWhereCols[0]):
-                            tempStr = ' '.join(ObjectArgList[NewTableWhereCols[0][i]])
+                            tempStr = ' '.join(
+                                ObjectArgList[NewTableWhereCols[0][i]])
                             if len(NewTableWhereCols[0]) - 1 == i:
                                 print(tempStr)
                             else:
@@ -568,24 +573,24 @@ def SelectCommand(commandsList):
                                 if len(NewTableWhereCols[i]) - 1 == j:
                                     print(NewTableWhereCols[i][j])
                                 else:
-                                    print(NewTableWhereCols[i][j] + "|", end='')
+                                    print(
+                                        NewTableWhereCols[i][j] + "|", end='')
 
-
-          
     else:
         print("!Failed select command arguments were invalid")
 
 # ----------------------------------------------------------------------------
-# FUNCTION NAME:     getNewTableList(DBname)
+# FUNCTION NAME:     getNewTableList(IndexList, TableDataLines, isWhereActive, WhereCondition)
 # PURPOSE:           This function will return a new table list based on
-#                    the index list we give it (remove columns)
+#                    the index list we give it (remove columns) or
+#                    filter rows if the isWhereActive condition is True
 # -----------------------------------------------------------------------------
 
 
 def getNewTableList(IndexList, TableDataLines, isWhereActive, WhereCondition):
 
-    #If there is a where condition
-    if isWhereActive :
+    # If there is a where condition
+    if isWhereActive:
         tableList = list()
         # Append IndexList to index 0
         tableList.append(IndexList)
@@ -597,38 +602,38 @@ def getNewTableList(IndexList, TableDataLines, isWhereActive, WhereCondition):
             AddToList = False
             # For certain columns in the row
             for j, _ in enumerate(IndexList):
-           
+
                 #SecondValue = float(WhereCondition[2])
                 #FirstValue = float(TableDataLines[i][IndexList[j]])
 
-                if isint(TableDataLines[i][IndexList[j]]) :
+                if isint(TableDataLines[i][IndexList[j]]):
                     FirstValue = int(TableDataLines[i][IndexList[j]])
-                elif isfloat(TableDataLines[i][IndexList[j]]) :
+                elif isfloat(TableDataLines[i][IndexList[j]]):
                     FirstValue = float(TableDataLines[i][IndexList[j]])
-                else: 
+                else:
                     FirstValue = str(TableDataLines[i][IndexList[j]])
 
-                #WhereConditon[3] = 'Gizmo WhereCondition[2]
-                #If larger than 3 we assume 
-                if len(WhereCondition) == 5 :
-                    if WhereCondition[2] == "'" and WhereCondition[4] == "'" :
+                # WhereConditon[3] = 'Gizmo WhereCondition[2]
+                # If larger than 3 we assume
+                if len(WhereCondition) == 5:
+                    if WhereCondition[2] == "'" and WhereCondition[4] == "'":
                         #SecondValue = str(WhereCondition[3])
-                        SecondValue = ''.join(str(e) for e in WhereCondition[2:])
-                else :
-                    if isint(WhereCondition[2]) :
+                        SecondValue = ''.join(str(e)
+                                              for e in WhereCondition[2:])
+                else:
+                    if isint(WhereCondition[2]):
                         SecondValue = int(WhereCondition[2])
-                    elif isfloat(WhereCondition[2]) :
+                    elif isfloat(WhereCondition[2]):
                         SecondValue = float(WhereCondition[2])
-                
 
-                if(op[WhereCondition[1]](FirstValue, SecondValue)) : 
+                if(op[WhereCondition[1]](FirstValue, SecondValue)):
                     AddToList = True
 
             # Append the row to the table list
-            if AddToList :
+            if AddToList:
                 tableList.append(rowList)
 
-        #List returned with items filter by the condition 
+        # List returned with items filter by the condition
         return tableList
     else:
         tableList = list()
@@ -652,12 +657,8 @@ def getNewTableList(IndexList, TableDataLines, isWhereActive, WhereCondition):
         return tableList
 
 
-
-
-    
-
 # ----------------------------------------------------------------------------
-# FUNCTION NAME:     getIndexList(DBname)
+# FUNCTION NAME:     getIndexList(MD, selectColumnsList)
 # PURPOSE:           This function will return a list on indices corresponding
 #                    to the location on the table
 # -----------------------------------------------------------------------------
