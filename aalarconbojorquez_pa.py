@@ -28,7 +28,7 @@ op = {'>': lambda x, y: x > y,
       '<': lambda x, y: x < y,
       '>=': lambda x, y: x >= y,
       '<=': lambda x, y: x <= y,
-      '==': lambda x, y: x == y,
+      '=': lambda x, y: x == y,
       '!=': lambda x, y: x != y,}
 
 
@@ -399,7 +399,6 @@ def DropDatabase(DBname):
 
 
 def SelectCommand(commandsList):
-
     global GlobalCurrentDirectory
 
     commandLine = ' '.join(str(e) for e in commandsList)
@@ -428,14 +427,12 @@ def SelectCommand(commandsList):
     if SelectCommand:
         selectColumns = SelectCommand.group(1)
         selectTableName = SelectCommand.group(2).lower()
-        print('Select without the where condition\n')
     elif SelectWhereCommand:
         selectColumns = SelectWhereCommand.group(1)
         selectTableName = SelectWhereCommand.group(2).lower()
         selectWhere = SelectWhereCommand.group(3)
-        print('Select with the where condition')
     else:
-        print('SELECT COMMAND NOT RECOGNIZED')
+        print('!Select arguments not recognized')
 
     # If either RE had a match grab the data from the file/table
     MetaDataFileLine = ''
@@ -513,6 +510,14 @@ def SelectCommand(commandsList):
                                 print(NewTableList[i][j] + "|", end='')
 
                 elif SelectWhereCommand:
+
+                    
+                    # Split the entered columns by  ,
+                    selectColumnsList = selectColumns.split(',')
+                    # Remove any blanks
+                    for i, _ in enumerate(selectColumnsList):
+                        selectColumnsList[i] = selectColumnsList[i].strip()
+
                     #0:columnname , 1: operator , 2: condition
                     selectWhereList = selectWhere.split()
                     
@@ -530,14 +535,43 @@ def SelectCommand(commandsList):
                         TableDataFileLines[i] = TableDataFileLines[i].split(
                             '|')
 
-                    NewTableL = getNewTableList(IndexList, TableDataFileLines, True, selectWhereList)
+                    #Filter all the data based on the where condition
+                    NewTableWhere = getNewTableList(IndexList, TableDataFileLines, True, selectWhereList)
 
-                    print("Tes")
+                    #If we want all columns just display all the data
+                    if selectColumns == '*':
+                        print(MetaDataFileLine)
+                        for i in range(1, len(NewTableWhere)):
+                            for j in range(len(NewTableWhere[i])):
+                                if len(NewTableWhere[i]) - 1 == j:
+                                    print(NewTableWhere[i][j])
+                                else:
+                                    print(NewTableWhere[i][j] + "|", end='')
+                    
+                    else : 
+                        # Get Args List to search for column names
+                        ObjectArgList = getattr(MD, 'MetaArgsList')
+                        SelectIndexList = getIndexList(MD, selectColumnsList)
+                        #Filter columns based on the index list
+                        NewTableWhereCols = getNewTableList(SelectIndexList, NewTableWhere[1:], False, [])
 
-                # IF selectCouumns = name, name and selectWhereCommand = True
-                    # Grab data from those colums
-                    # Filter the data
-                    # Display
+                        # Display column names
+                        for i, _ in enumerate(NewTableWhereCols[0]):
+                            tempStr = ' '.join(ObjectArgList[NewTableWhereCols[0][i]])
+                            if len(NewTableWhereCols[0]) - 1 == i:
+                                print(tempStr)
+                            else:
+                                print(tempStr + "|", end='')
+
+                        for i in range(1, len(NewTableWhereCols)):
+                            for j in range(len(NewTableWhereCols[i])):
+                                if len(NewTableWhereCols[i]) - 1 == j:
+                                    print(NewTableWhereCols[i][j])
+                                else:
+                                    print(NewTableWhereCols[i][j] + "|", end='')
+
+
+          
     else:
         print("!Failed select command arguments were invalid")
 
@@ -564,8 +598,29 @@ def getNewTableList(IndexList, TableDataLines, isWhereActive, WhereCondition):
             # For certain columns in the row
             for j, _ in enumerate(IndexList):
            
-                SecondValue = float(WhereCondition[2])
-                FirstValue = float(TableDataLines[i][IndexList[j]])
+                #SecondValue = float(WhereCondition[2])
+                #FirstValue = float(TableDataLines[i][IndexList[j]])
+
+                if isint(TableDataLines[i][IndexList[j]]) :
+                    FirstValue = int(TableDataLines[i][IndexList[j]])
+                elif isfloat(TableDataLines[i][IndexList[j]]) :
+                    FirstValue = float(TableDataLines[i][IndexList[j]])
+                else: 
+                    FirstValue = str(TableDataLines[i][IndexList[j]])
+
+                #WhereConditon[3] = 'Gizmo WhereCondition[2]
+                #If larger than 3 we assume 
+                if len(WhereCondition) == 5 :
+                    if WhereCondition[2] == "'" and WhereCondition[4] == "'" :
+                        #SecondValue = str(WhereCondition[3])
+                        SecondValue = ''.join(str(e) for e in WhereCondition[2:])
+                else :
+                    if isint(WhereCondition[2]) :
+                        SecondValue = int(WhereCondition[2])
+                    elif isfloat(WhereCondition[2]) :
+                        SecondValue = float(WhereCondition[2])
+                
+
                 if(op[WhereCondition[1]](FirstValue, SecondValue)) : 
                     AddToList = True
 
