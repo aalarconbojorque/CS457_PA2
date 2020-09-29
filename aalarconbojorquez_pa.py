@@ -160,6 +160,14 @@ def ExecuteCommand(commandLine):
                 SelectCommand(commandLine[0:])
             except:
                 print(argumentErrorMessage)
+        
+        # If the first keyword is select
+        elif commandLine[0].lower() == "delete":
+            # Check the remaining ones and execute or display an error
+            try:
+                DeleteCommand(commandLine[0:])
+            except:
+                print(argumentErrorMessage)
 
         # IF the first keyword is insert
         elif commandLine[0].lower() == "insert":
@@ -175,6 +183,165 @@ def ExecuteCommand(commandLine):
         # If the first keyword was not recognized above display an error
         else:
             print("!Failed command : '" + commandLine[0] + "' not recognized")
+
+# ----------------------------------------------------------------------------
+# FUNCTION NAME:     SelectCommand(commandsList)
+# PURPOSE:           This function executes the delete command
+# -----------------------------------------------------------------------------
+
+
+def DeleteCommand(commandsList):
+    global GlobalCurrentDirectory
+
+    commandLine = ' '.join(str(e) for e in commandsList)
+
+    # Check if the command has the format select name, name from table ;
+    # Group 1 = tablename
+    # Group 2 = conditon name = 'gizmo'
+    DeleteCommand = re.search(
+        r'(?i)delete\s*from\s*(\w*)\s*where\s*(.*?)\s*;', commandLine)
+
+     # The table we want to delete from
+    deleteTableName = ''
+    # The where condition
+    deleteConditon = ''
+
+    # Check if the regular expressions had a match if so populate the groups
+    if DeleteCommand:
+        deleteTableName = DeleteCommand.group(1)
+        deleteConditon = DeleteCommand.group(2)
+    else:
+        print('!Failed Delete arguments not recognized')
+
+
+    # If either RE had a match grab the data from the file/table and write to it the new data
+    MetaDataFileLine = ''
+    TableDataFileLines = ''
+    if DeleteCommand and len(deleteTableName) > 0 and len(deleteConditon) > 0 :
+        if not GlobalCurrentDirectory:
+            print("!Failed a database is currently not in use")
+        else:
+            # Check if the table/file exists
+            if not os.path.exists(GlobalCurrentDirectory + "/" + deleteTableName):
+
+                print("!Failed to delete from table " +
+                      deleteTableName + " because it does not exist.")
+
+            else:
+                # Grab table data and clean up
+                file = open(GlobalCurrentDirectory + "/" + deleteTableName, "r")
+                MetaDataFileLine = file.readline()
+                TableDataFileLines = file.readlines()
+                MetaDataFileLine = MetaDataFileLine.replace('\n', '')
+                for i, _ in enumerate(TableDataFileLines):
+                    TableDataFileLines[i] = TableDataFileLines[i].replace(
+                        '\n', '')
+                for i, _ in enumerate(TableDataFileLines):
+                        TableDataFileLines[i] = TableDataFileLines[i].split(
+                            '|')
+                file.close()
+
+                # 0:columnname , 1: operator , 2: condition
+                deleteConditionList = deleteConditon.split()
+
+                # MetaData Object to assist
+                MD = MetaData()
+                MD = GenerateMetadataObject(deleteTableName)
+
+                # Generate templist to look up index in table
+                tempList = list()
+                tempList.append(deleteConditionList[0])
+                IndexList = getIndexList(MD, tempList)
+
+                #Generate a new table with the delete condition removing the rows that do not follow it
+                deletedTableData = getNewTableListModiyfing(IndexList, TableDataFileLines, True, deleteConditionList)
+                #Join each column in each row by a | for writing to table
+                deletedTableDataJoined = []
+                for i in range(1, len(deletedTableData)):
+                    deletedTableDataJoined.append('|'.join(str(e) for e in deletedTableData[i]))
+
+                #In order to clear the file and write to it, open in write mode
+                file = open(GlobalCurrentDirectory + "/" + deleteTableName, "w")
+
+                file.write(MetaDataFileLine + '\n')
+                #Write each tuple
+                for i, _ in enumerate(deletedTableDataJoined):
+                    if(len(deletedTableDataJoined) - 1 == i) :
+                        file.write(deletedTableDataJoined[i])
+                    else:
+                        file.write(deletedTableDataJoined[i] + '\n')
+
+               
+                    
+                    
+                file.close()
+                print("Again")
+
+# ----------------------------------------------------------------------------
+# FUNCTION NAME:     getNewTableListModiyfing()
+# PURPOSE:           This function deletes records from a table list based on
+#                    a condition
+# -----------------------------------------------------------------------------
+def getNewTableListModiyfing(IndexList, TableDataLines, deleteActive, deleteCondition):
+
+    # If we want to delete the records : True
+    if deleteActive:
+        deleteCount = 0
+
+        tableList = list()
+        # Append IndexList to index 0
+        tableList.append(IndexList)
+
+        # For every row
+        for i, _ in enumerate(TableDataLines):
+            # Create a row list
+            rowList = TableDataLines[i]
+            AddToList = False
+            # For certain columns in the row
+            for j, _ in enumerate(IndexList):
+
+                if isint(TableDataLines[i][IndexList[j]]):
+                    FirstValue = int(TableDataLines[i][IndexList[j]])
+                elif isfloat(TableDataLines[i][IndexList[j]]):
+                    FirstValue = float(TableDataLines[i][IndexList[j]])
+                else:
+                    FirstValue = str(TableDataLines[i][IndexList[j]])
+
+                # WhereConditon[3] = 'Gizmo WhereCondition[2]
+                # If larger than 3 we assume
+                if len(deleteCondition) == 5:
+                    if deleteCondition[2] == "'" and deleteCondition[4] == "'":
+                        #SecondValue = str(WhereCondition[3])
+                        SecondValue = ''.join(str(e)
+                                              for e in deleteCondition[2:])
+                else:
+                    if isint(deleteCondition[2]):
+                        SecondValue = int(deleteCondition[2])
+                    elif isfloat(deleteCondition[2]):
+                        SecondValue = float(deleteCondition[2])
+
+                if not (op[deleteCondition[1]](FirstValue, SecondValue)):
+                    AddToList = True
+
+            # Append the row to the table list
+            if AddToList:
+                tableList.append(rowList)
+            else :
+                deleteCount += 1
+
+        # List returned with items filter by the condition
+        if deleteCount == 1 :
+            print(str(deleteCount) + ' record deleted.')
+        else :
+            print(str(deleteCount) + ' records deleted.')
+        return tableList
+    else:
+        pass
+
+        return tableList
+
+
+
 
 # ----------------------------------------------------------------------------
 # FUNCTION NAME:     GenerateMetadataObject(str)
