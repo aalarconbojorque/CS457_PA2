@@ -8,5 +8,4 @@ insert into Product values(3,	'SingleTouch', 	149.99);
 insert into Product values(4,	'MultiTouch', 	199.99);
 insert into Product values(5,	'SuperGizmo', 	49.99);
 
-
 .exit
