@@ -305,7 +305,7 @@ def UpdateCommand(commandLine):
 
               
                 file.close()
-                print("Again")
+     
 
 
 # ----------------------------------------------------------------------------
