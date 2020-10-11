@@ -9,7 +9,7 @@
             "type": "python",
             "request": "launch",
             "program": "${file}",
-            "args":["<","test.sql"],
+            "args":["<","PA2_test.sql"],
             "console": "integratedTerminal"
         }
     ]

@@ -1,11 +1,17 @@
-CREATE DATABASE CS457_PA2;
-USE CS457_PA2;
-CREATE TABLE Product (pid int, name varchar(20), price float);
+--CS457 PA3
 
-insert into Product values(1,	'Gizmo',      	19.99);
-insert into Product values(2,	'PowerGizmo', 	29.99);
-insert into Product values(3,	'SingleTouch', 	149.99);
-insert into Product values(4,	'MultiTouch', 	199.99);
-insert into Product values(5,	'SuperGizmo', 	49.99);
+--Construct the database and table (0 points; expected to work from PA1)
+CREATE DATABASE CS457_PA3;
+USE CS457_PA3;
+create table Employee(id int, name varchar(10));
+create table Sales(employeeID int, productID int);
+
+--Insert new data (0 points; expected to work from PA2)
+insert into Employee values(1,'Joe');
+insert into Employee values(2,'Jack');
+insert into Employee values(3,'Gill');
+insert into Sales values(1,344);
+insert into Sales values(1,355);
+insert into Sales values(2,544);
 
 .exit

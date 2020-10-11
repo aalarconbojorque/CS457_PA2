@@ -9,10 +9,9 @@
 # ----------------   -----------    ---------------
 # Andy Alarcon       2020-09-27     1.0 ... Added multipleline command parsing, Insertion command with type checking
 # Andy Alarcon       2020-09-28     1.1 ... Added column specific select command
-# Andy Alarcon       2020-09-29     1.2 ... Added where condition feature to select command
-# Andy Alarcon       2020-09-29     1.2 ... Added delete command
-# Andy Alarcon       2020-09-29     1.2 ... Added update command
-# Fix the spliting done from command line
+# Andy Alarcon       2020-10-05     1.2 ... Added where condition feature to select command
+# Andy Alarcon       2020-10-07     1.2 ... Added delete command
+# Andy Alarcon       2020-10-11     1.2 ... Added update command
 # -----------------------------------------------------------------------------
 
 import sys
@@ -23,12 +22,14 @@ import shutil
 # Global variable to keep track of the current DB in use
 GlobalCurrentDirectory = ""
 
-# A class to handle the metadata manipulation
+#A class to handle the metadata manipulation,
+#By calling GenerateMetadataObject func, the object will have parsed the 
+#Metadata names and datatypes, while also providing indexes to maniuplate
+#the data in queries 
 class MetaData(object):
     pass
 
-
-# Operators for defined for conditon checking in queries
+# Operators defined for conditon checking in queries
 op = {'>': lambda x, y: x > y,
       '<': lambda x, y: x < y,
       '>=': lambda x, y: x >= y,
@@ -163,7 +164,7 @@ def ExecuteCommand(commandLine):
                 SelectCommand(commandLine[0:])
             except:
                 print(argumentErrorMessage)
-        
+
         # If the first keyword is select
         elif commandLine[0].lower() == "delete":
             # Check the remaining ones and execute or display an error
@@ -204,15 +205,14 @@ def ExecuteCommand(commandLine):
 def UpdateCommand(commandLine):
     global GlobalCurrentDirectory
 
-
     # Check if the command has the format
     # Group 1 = tablename
     # Group 2 = set conditon name = 'gizmo'
-    # Group 3 = where condition 
+    # Group 3 = where condition
     UpdateCommand = re.search(
         r'(?i)update\s*(\w*)\s*set\s*(.*?)\s*where\s*(.*?)\s*;', commandLine)
 
-     # The table we want to modify
+    # The table we want to modify
     updateTableName = ''
     # The where condition
     updateSetConditon = ''
@@ -227,11 +227,10 @@ def UpdateCommand(commandLine):
     else:
         print('!Failed Update arguments not recognized')
 
-
     # If either RE had a match grab the data from the file/table and write to it the new data
     MetaDataFileLine = ''
     TableDataFileLines = ''
-    if UpdateCommand and len(updateSetConditon) > 0 and len(updateTableName) > 0  and len(updateWhereConditon) > 0:
+    if UpdateCommand and len(updateSetConditon) > 0 and len(updateTableName) > 0 and len(updateWhereConditon) > 0:
         if not GlobalCurrentDirectory:
             print("!Failed a database is currently not in use")
         else:
@@ -243,7 +242,8 @@ def UpdateCommand(commandLine):
 
             else:
                 # Grab table data and clean up
-                file = open(GlobalCurrentDirectory + "/" + updateTableName, "r")
+                file = open(GlobalCurrentDirectory +
+                            "/" + updateTableName, "r")
                 MetaDataFileLine = file.readline()
                 TableDataFileLines = file.readlines()
                 MetaDataFileLine = MetaDataFileLine.replace('\n', '')
@@ -251,8 +251,8 @@ def UpdateCommand(commandLine):
                     TableDataFileLines[i] = TableDataFileLines[i].replace(
                         '\n', '')
                 for i, _ in enumerate(TableDataFileLines):
-                        TableDataFileLines[i] = TableDataFileLines[i].split(
-                            '|')
+                    TableDataFileLines[i] = TableDataFileLines[i].split(
+                        '|')
                 file.close()
 
                 # 0:columnname to change, 1: = , 2: NewValue
@@ -274,38 +274,35 @@ def UpdateCommand(commandLine):
                 tempWherelist.append(updateWhereConditonList[0])
                 WhereIndexList = getIndexList(MD, tempWherelist)
 
+                # Generate a new table with the delete condition removing the rows that do not follow it
+                updatedTableData = getNewTableListUpdate(SetIndexList, WhereIndexList, TableDataFileLines,
+                                                         updateSetConditonList, updateWhereConditonList)
 
+                # In order to clear the file and write to it, open in write mode
+                file = open(GlobalCurrentDirectory +
+                            "/" + updateTableName, "w")
 
-                #Generate a new table with the delete condition removing the rows that do not follow it
-                updatedTableData = getNewTableListUpdate(SetIndexList, WhereIndexList, TableDataFileLines, 
-                updateSetConditonList, updateWhereConditonList)
-          
-
-                #In order to clear the file and write to it, open in write mode
-                file = open(GlobalCurrentDirectory + "/" + updateTableName, "w")
-
-                #No data has been returned, do not add a new line
-                if len(updatedTableData) == 1 :
+                # No data has been returned, do not add a new line
+                if len(updatedTableData) == 1:
                     file.write(MetaDataFileLine)
-                else :
+                else:
 
-                    #Join each column in each row by a | for writing to table
+                    # Join each column in each row by a | for writing to table
                     updatedTableDataJoined = []
                     for i in range(0, len(updatedTableData)):
-                        updatedTableDataJoined.append('|'.join(str(e) for e in updatedTableData[i]))
+                        updatedTableDataJoined.append(
+                            '|'.join(str(e) for e in updatedTableData[i]))
 
                     file.write(MetaDataFileLine + '\n')
 
-                    #Write each tuple
+                    # Write each tuple
                     for i, _ in enumerate(updatedTableDataJoined):
-                        if(len(updatedTableDataJoined) - 1 == i) :
+                        if(len(updatedTableDataJoined) - 1 == i):
                             file.write(updatedTableDataJoined[i])
                         else:
                             file.write(updatedTableDataJoined[i] + '\n')
 
-              
                 file.close()
-     
 
 
 # ----------------------------------------------------------------------------
@@ -313,15 +310,16 @@ def UpdateCommand(commandLine):
 # PURPOSE:           This function updates records from a table list based on
 #                    a condition and the new value
 # -----------------------------------------------------------------------------
+
+
 def getNewTableListUpdate(SetIndexList, WhereIndexList, TableDataLines, SetConditon, WhereCondition):
 
     modifyCount = 0
-
     tableList = list()
 
     # For every row
     for i, _ in enumerate(TableDataLines):
-        
+
         RowModifed = False
         # For certain columns in the row
         for j, _ in enumerate(WhereIndexList):
@@ -333,7 +331,6 @@ def getNewTableListUpdate(SetIndexList, WhereIndexList, TableDataLines, SetCondi
             else:
                 FirstValue = str(TableDataLines[i][WhereIndexList[j]])
 
-            
             if isint(WhereCondition[2]):
                 SecondValue = int(WhereCondition[2])
             elif isfloat(WhereCondition[2]):
@@ -346,7 +343,7 @@ def getNewTableListUpdate(SetIndexList, WhereIndexList, TableDataLines, SetCondi
                 TableDataLines[i][SetIndexList[j]] = SetConditon[2]
                 # Create a row list
                 rowList = TableDataLines[i]
-            else :
+            else:
                 # Create a row list
                 rowList = TableDataLines[i]
 
@@ -357,11 +354,11 @@ def getNewTableListUpdate(SetIndexList, WhereIndexList, TableDataLines, SetCondi
         tableList.append(rowList)
 
     # List returned with items filter by the condition
-    if modifyCount == 1 :
+    if modifyCount == 1:
         print(str(modifyCount) + ' record modified.')
-    else :
+    else:
         print(str(modifyCount) + ' records modified.')
-    
+
     return tableList
 
 
@@ -382,23 +379,22 @@ def DeleteCommand(commandsList):
     DeleteCommand = re.search(
         r'(?i)delete\s*from\s*(\w*)\s*where\s*(.*?)\s*;', commandLine)
 
-     # The table we want to delete from
+    # The table we want to delete from
     deleteTableName = ''
     # The where condition
     deleteConditon = ''
 
     # Check if the regular expressions had a match if so populate the groups
     if DeleteCommand:
-        deleteTableName = DeleteCommand.group(1)
+        deleteTableName = DeleteCommand.group(1).lower()
         deleteConditon = DeleteCommand.group(2)
     else:
         print('!Failed Delete arguments not recognized')
 
-
     # If either RE had a match grab the data from the file/table and write to it the new data
     MetaDataFileLine = ''
     TableDataFileLines = ''
-    if DeleteCommand and len(deleteTableName) > 0 and len(deleteConditon) > 0 :
+    if DeleteCommand and len(deleteTableName) > 0 and len(deleteConditon) > 0:
         if not GlobalCurrentDirectory:
             print("!Failed a database is currently not in use")
         else:
@@ -410,7 +406,8 @@ def DeleteCommand(commandsList):
 
             else:
                 # Grab table data and clean up
-                file = open(GlobalCurrentDirectory + "/" + deleteTableName, "r")
+                file = open(GlobalCurrentDirectory +
+                            "/" + deleteTableName, "r")
                 MetaDataFileLine = file.readline()
                 TableDataFileLines = file.readlines()
                 MetaDataFileLine = MetaDataFileLine.replace('\n', '')
@@ -418,8 +415,8 @@ def DeleteCommand(commandsList):
                     TableDataFileLines[i] = TableDataFileLines[i].replace(
                         '\n', '')
                 for i, _ in enumerate(TableDataFileLines):
-                        TableDataFileLines[i] = TableDataFileLines[i].split(
-                            '|')
+                    TableDataFileLines[i] = TableDataFileLines[i].split(
+                        '|')
                 file.close()
 
                 # 0:columnname , 1: operator , 2: condition
@@ -434,35 +431,36 @@ def DeleteCommand(commandsList):
                 tempList.append(deleteConditionList[0])
                 IndexList = getIndexList(MD, tempList)
 
-                #Generate a new table with the delete condition removing the rows that do not follow it
-                deletedTableData = getNewTableListDelete(IndexList, TableDataFileLines, deleteConditionList)
-          
+                # Generate a new table with the delete condition removing the rows that do not follow it
+                deletedTableData = getNewTableListDelete(
+                    IndexList, TableDataFileLines, deleteConditionList)
 
-                #In order to clear the file and write to it, open in write mode
-                file = open(GlobalCurrentDirectory + "/" + deleteTableName, "w")
+                # In order to clear the file and write to it, open in write mode
+                file = open(GlobalCurrentDirectory +
+                            "/" + deleteTableName, "w")
 
-                #No data has been returned, do not add a new line
-                if len(deletedTableData) == 1 :
+                # No data has been returned, do not add a new line
+                if len(deletedTableData) == 1:
                     file.write(MetaDataFileLine)
-                else :
+                else:
 
-                    #Join each column in each row by a | for writing to table
+                    # Join each column in each row by a | for writing to table
                     deletedTableDataJoined = []
                     for i in range(1, len(deletedTableData)):
-                        deletedTableDataJoined.append('|'.join(str(e) for e in deletedTableData[i]))
+                        deletedTableDataJoined.append(
+                            '|'.join(str(e) for e in deletedTableData[i]))
 
                     file.write(MetaDataFileLine + '\n')
 
-                    #Write each tuple
+                    # Write each tuple
                     for i, _ in enumerate(deletedTableDataJoined):
-                        if(len(deletedTableDataJoined) - 1 == i) :
+                        if(len(deletedTableDataJoined) - 1 == i):
                             file.write(deletedTableDataJoined[i])
                         else:
                             file.write(deletedTableDataJoined[i] + '\n')
 
-              
                 file.close()
-         
+
 
 # ----------------------------------------------------------------------------
 # FUNCTION NAME:     getNewTableListDelete()
@@ -498,7 +496,7 @@ def getNewTableListDelete(IndexList, TableDataLines, deleteCondition):
                 if deleteCondition[2] == "'" and deleteCondition[4] == "'":
                     #SecondValue = str(WhereCondition[3])
                     SecondValue = ''.join(str(e)
-                                            for e in deleteCondition[2:])
+                                          for e in deleteCondition[2:])
             else:
                 if isint(deleteCondition[2]):
                     SecondValue = int(deleteCondition[2])
@@ -511,21 +509,16 @@ def getNewTableListDelete(IndexList, TableDataLines, deleteCondition):
         # Append the row to the table list
         if AddToList:
             tableList.append(rowList)
-        else :
+        else:
             deleteCount += 1
 
     # List returned with items filter by the condition
-    if deleteCount == 1 :
+    if deleteCount == 1:
         print(str(deleteCount) + ' record deleted.')
-    else :
+    else:
         print(str(deleteCount) + ' records deleted.')
-    
+
     return tableList
-
-
-      
-
-
 
 
 # ----------------------------------------------------------------------------
@@ -1113,7 +1106,7 @@ def CreateTable(tblName, OGCommandLine):
                         file.write(argumentList[i])
                     else:
                         file.write(argumentList[i] + "|")
-                
+
                 file.close()
             else:
                 print("!Failed to create table " +
